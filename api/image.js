@@ -1,46 +1,44 @@
-import { chromium } from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 
 export default async function handler(req, res) {
-  const { img } = req.query;
+  const img = req.query.img;
 
   if (!img) {
-    res.status(400).send("Missing 'img' query parameter");
-    return;
+    return res.status(400).send("Missing 'img' query parameter");
   }
 
   try {
+    const executablePath = await chromium.executablePath();
+
     const browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: null,
-      executablePath: await chromium.executablePath(),
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
       headless: chromium.headless,
+      ignoreHTTPSErrors: true,
     });
 
     const page = await browser.newPage();
-    await page.goto(img, {
-      waitUntil: 'networkidle2',
-    });
+    await page.goto(img, { waitUntil: "networkidle2", timeout: 15000 });
 
-    // Get the image content directly
-    const content = await page.evaluate(() => {
-      const imgTag = document.querySelector('img');
+    const imageUrl = await page.evaluate(() => {
+      const imgTag = document.querySelector("img");
       return imgTag ? imgTag.src : null;
     });
 
-    if (!content) {
+    if (!imageUrl) {
       await browser.close();
-      return res.status(404).send("Image not found on page");
+      return res.status(404).send("No image found in page.");
     }
 
-    const viewSource = await page.goto(content);
+    const viewSource = await page.goto(imageUrl);
     const buffer = await viewSource.buffer();
-    const type = viewSource.headers()['content-type'] || 'image/jpeg';
 
     await browser.close();
 
-    res.setHeader('Content-Type', type);
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader("Content-Type", viewSource.headers()["content-type"] || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600");
     res.status(200).send(buffer);
   } catch (err) {
     res.status(500).send("Error loading image: " + err.message);
