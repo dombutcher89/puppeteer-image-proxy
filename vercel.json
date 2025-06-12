@@ -1,9 +1,1 @@
-{
-  "functions": {
-    "api/image.js": {
-      "runtime": "nodejs",
-      "memory": 256,
-      "maxDuration": 10
-    }
-  }
-}
+
