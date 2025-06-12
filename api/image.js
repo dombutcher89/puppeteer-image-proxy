@@ -1,43 +1,25 @@
-import { chromium } from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
-
 export default async function handler(req, res) {
   const img = req.query.img;
-  if (!img) return res.status(400).send("Missing 'img' query parameter");
+  if (!img) return res.status(400).send("Missing 'img' query param");
 
-  try {
-    const executablePath = await chromium.executablePath();
+  const response = await fetch("https://proxy.scrapeops.io/v1/", {
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": "11d03ff8-2cb5-4f1e-99cf-62d83886d4e4"
+    },
+    method: "POST",
+    body: JSON.stringify({ url: img, bypass: "cloudflare_level_1" })
+  });
 
-    const browser = await puppeteer.launch({
-      args: chromium.args || [],
-      executablePath,
-      headless: chromium.headless,
-      defaultViewport: null,
-    });
-
-    const page = await browser.newPage();
-    await page.goto(img, { waitUntil: "networkidle2", timeout: 20000 });
-
-    const imageURL = await page.evaluate(() => {
-      const imgTag = document.querySelector("img");
-      return imgTag ? imgTag.src : null;
-    });
-
-    if (!imageURL) {
-      await browser.close();
-      return res.status(404).send("No image found");
-    }
-
-    const response = await page.goto(imageURL);
-    const buffer = await response.buffer();
-    const contentType = response.headers()["content-type"] || "image/jpeg";
-
-    await browser.close();
-
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.status(200).send(buffer);
-  } catch (err) {
-    res.status(500).send("Error loading image: " + err.message);
+  if (!response.ok) {
+    const text = await response.text();
+    return res.status(502).send(`ScrapeOps error: ${text}`);
   }
+
+  const buffer = await response.arrayBuffer();
+  const contentType = response.headers.get("content-type") || "image/jpeg";
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.status(200).send(Buffer.from(buffer));
 }
