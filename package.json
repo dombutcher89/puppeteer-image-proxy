@@ -1,4 +1,5 @@
 {
+    // "trigger": "cache bust"
   "type": "module",
   "dependencies": {
     "@sparticuz/chromium": "^112.0.0",
