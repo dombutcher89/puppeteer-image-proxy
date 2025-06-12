@@ -1,5 +1,5 @@
 {
-    // "trigger": "cache bust"
+//trigger clean rebuild
   "type": "module",
   "dependencies": {
     "@sparticuz/chromium": "^112.0.0",
