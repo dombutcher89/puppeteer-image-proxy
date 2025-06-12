@@ -1,5 +1,5 @@
-import chromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
+import { chromium } from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 export default async function handler(req, res) {
   const img = req.query.img;
@@ -9,35 +9,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    const executablePath = await chromium.executablePath();
-
     const browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
+      executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      ignoreHTTPSErrors: true,
+      defaultViewport: null,
     });
 
     const page = await browser.newPage();
-    await page.goto(img, { waitUntil: "networkidle2", timeout: 15000 });
+    await page.goto(img, { waitUntil: 'networkidle2', timeout: 15000 });
 
+    // Try to extract the first image on the page
     const imageUrl = await page.evaluate(() => {
-      const imgTag = document.querySelector("img");
+      const imgTag = document.querySelector('img');
       return imgTag ? imgTag.src : null;
     });
 
     if (!imageUrl) {
       await browser.close();
-      return res.status(404).send("No image found in page.");
+      return res.status(404).send("No image found on page.");
     }
 
-    const viewSource = await page.goto(imageUrl);
-    const buffer = await viewSource.buffer();
+    const imageResp = await page.goto(imageUrl);
+    const buffer = await imageResp.buffer();
+    const contentType = imageResp.headers()['content-type'] || 'image/jpeg';
 
     await browser.close();
 
-    res.setHeader("Content-Type", viewSource.headers()["content-type"] || "image/jpeg");
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.status(200).send(buffer);
   } catch (err) {
