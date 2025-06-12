@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "dependencies": {
     "@sparticuz/chromium": "^112.0.0",
     "puppeteer-core": "^21.3.8"
